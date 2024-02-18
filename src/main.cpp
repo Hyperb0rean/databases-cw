@@ -31,14 +31,16 @@ std::vector<std::string> ReadDDLQueries(std::string filename) {
     std::string line;
     std::string query;
     while (std::getline(file, line)) {
-        query.append(line);
-        std::cerr << line[line.size() - 1] << std::endl;
-        if (line[line.size() - 1] == ';') {
-            std::cerr << query << std::endl;
+        if (line == "") {
             result.emplace_back(query);
             query.clear();
+        } else {
+            query.append(line);
+            query.append("\n");
         }
     }
+    result.emplace_back(query);
+    query.clear();
     return result;
 }
 
@@ -47,17 +49,7 @@ void InitDatabase() {
     std::cout << GetCurrentTime() << " | Connected to " << c.dbname() << " " << c.hostname() << " "
               << c.port() << '\n';
 
-    // std::vector<std::string> ddl_queries = {R"EOF(
-    //     create table crops (
-    //         crop_id serial primary key,
-    //         name text not null,
-    //         humidity real check (humidity >= 0 and humidity <= 100),
-    //         brightness real check (brightness > 0),
-    //         is_legal boolean not null,
-    //         brain_damage real check (brain_damage > -200 and brain_damage < 200)
-    //     );)EOF"};
-
-    auto ddl_queries = ReadDDLQueries("./ddl.sql");
+    auto ddl_queries = ReadDDLQueries("./cw.sql");
 
     for (const auto& ddl_query : ddl_queries) {
         pqxx::work query(c);
