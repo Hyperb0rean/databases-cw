@@ -25,9 +25,7 @@ if (CURL_FOUND)
 endif()
 set(SOURCES 
   main.cpp
-  util.h
-  ddl.h
-  ddl.cpp)
+  util.h)
 add_executable(database ${SOURCES})
 target_include_directories(database PRIVATE ".")
 target_link_libraries(database /usr/local/lib/libTgBot.a ${CMAKE_THREAD_LIBS_INIT} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${CURL_LIBRARIES} libpqxx::pqxx_shared PostgreSQL::PostgreSQL)

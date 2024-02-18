@@ -96,23 +96,27 @@ RUN /etc/init.d/postgresql start
 RUN echo "host all all 0.0.0.0/0 md5" >>/etc/postgresql/16/main/pg_hba.conf && \
     echo "listen_addresses='*'" >> /etc/postgresql/16/main/postgresql.conf 
 RUN  /etc/init.d/postgresql restart
+
+WORKDIR /app
+COPY --from=build /app/build/database .
+COPY --from=build /app/src .
+RUN ls -la
+RUN chmod +x ./run.sh
+
 #changing rights
 RUN groupadd -r sample && useradd -r -g sample sample
 USER sample
 USER postgres
 RUN pg_lsclusters
 ENV PGPASSWORD=postgres
-# CMD ["/start_postgres.sh"]
 
 RUN  pg_ctlcluster 16 main start && \
-    # psql "ALTER USER postgres WITH PASSWORD 'mint';" && \
     createdb mintdb
 RUN pg_lsclusters
 
-#runnhing
-WORKDIR /app
-COPY --from=build /app/build/database .
+#running
 
 EXPOSE 5432
 
-ENTRYPOINT ["./database"]
+ENTRYPOINT ["./run.sh"]
+# RUN  pg_ctlcluster 16 main start

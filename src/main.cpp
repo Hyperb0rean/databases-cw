@@ -4,9 +4,9 @@
 #include <format>
 #include <initializer_list>
 #include <iostream>
+#include <pqxx/pqxx>
 #include <unordered_map>
 
-#include "ddl.h"
 #include "util.h"
 
 const size_t kMaxQueries = 50;
@@ -32,7 +32,15 @@ int main() {
     TgBot::Bot bot(std::getenv("TOKEN"));
     bool is_alive = true;
 
-    InitDatabase();
+    while (true) {
+        try {
+            pqxx::connection c;
+            std::cout << "Connected to " << c.dbname() << '\n';
+            break;
+
+        } catch (const std::exception& e) {
+        }
+    }
 
     std::vector<Command> bot_commands = {{"start", "User greetings"},
                                          {"kill", "Kills bot if you have permission"},
