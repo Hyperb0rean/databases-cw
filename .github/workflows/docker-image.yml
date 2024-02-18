@@ -17,4 +17,6 @@ jobs:
     - name: Build Bot
       run: docker build . --file Dockerfile --tag database
     - name: Run Bot
-      run: docker run -e TOKEN=${{ secrets.TOKEN }} database
+      env:
+        TOKEN: ${{ secrets.TOKEN }}
+      run: docker run -e TOKEN=${TOKEN} database
