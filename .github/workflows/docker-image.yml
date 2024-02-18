@@ -19,4 +19,4 @@ jobs:
     - name: Run Bot
       env:
         TOKEN: ${{ secrets.TOKEN }}
-      run: docker run -e TOKEN=${TOKEN} database
+      run: docker run -e TOKEN="$TOKEN" database
