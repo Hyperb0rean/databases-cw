@@ -1,3 +1,4 @@
+#building bot
 FROM gcc:latest as build
 
 RUN apt-get update && \
@@ -5,8 +6,10 @@ RUN apt-get update && \
     libboost-dev libboost-system-dev \
     cmake 
 
+
 RUN apt-get install g++ make binutils libboost-system-dev libssl-dev zlib1g-dev libcurl4-openssl-dev
 
+#installing tgbot lib
 RUN git clone https://github.com/reo7sp/tgbot-cpp
 RUN cmake ./tgbot-cpp
 RUN cd tgbot-cpp
@@ -14,14 +17,9 @@ RUN make -j4
 RUN make install
 RUN cd ..
 
-RUN apt-get install -y libpq-dev libpqxx-dev
 
-# RUN  git clone https://github.com/jtv/libpqxx.git
-# RUN cd libpqxx && \
-#     ./configure --disable-shared && \
-#     make && \
-#     make install && \
-#     cd ..
+#installing libpqxx
+RUN apt-get install -y libpq-dev libpqxx-dev
 
 RUN git clone https://github.com/jtv/libpqxx.git \
     --branch 6.4 --depth 1 \
@@ -35,19 +33,17 @@ RUN git clone https://github.com/jtv/libpqxx.git \
     -DCMAKE_MODULE_PATH=/usr/src/libpqxx-r6.4/cmake .. \
     && make && make install && ldconfig /usr/local/lib 
 
-
-RUN ls /usr/local/lib/
-
+#building sources
 ADD ./src /app/src
 WORKDIR /app/build
 
 RUN cmake ../src && \
     cmake --build . 
 
-
+#run configuration
 FROM ubuntu:latest
 
-
+#installing base dependencies
 RUN apt-get -y update && \
     apt-get install -y software-properties-common && \
     apt-get -y update 
@@ -66,6 +62,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y git make cmake g++ 
 
+#installing libpqxx
 RUN apt-get install -y libpq-dev libpqxx-dev
 
 
@@ -83,11 +80,15 @@ RUN git clone https://github.com/jtv/libpqxx.git \
 
 RUN find / -name libpq.so.5
 
+#changing rights
 RUN groupadd -r sample && useradd -r -g sample sample
 USER sample
 
-WORKDIR /app
+#installing postgresql
+# RUN apt-get -y install postgresql
 
+#runnhing
+WORKDIR /app
 COPY --from=build /app/build/database .
 
 ENTRYPOINT ["./database"]

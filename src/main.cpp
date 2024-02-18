@@ -4,9 +4,12 @@
 #include <format>
 #include <initializer_list>
 #include <iostream>
+#include <unordered_map>
 
 #include "ddl.h"
 #include "util.h"
+
+const size_t kMaxQueries = 50;
 
 class Command : public TgBot::BotCommand {
 public:
@@ -15,6 +18,15 @@ public:
         this->description = *std::next(args.begin());
     }
 };
+
+bool HandleUser(size_t id, std::unordered_map<size_t, size_t>& users) {
+    if (users.contains(id)) {
+        ++users[id];
+    } else {
+        users[id] = 0;
+    }
+    return users[id] > kMaxQueries;
+}
 
 int main() {
     TgBot::Bot bot(std::getenv("TOKEN"));
@@ -26,7 +38,12 @@ int main() {
                                          {"kill", "Kills bot if you have permission"},
                                          {"help", "Commands info"}};
 
-    bot.getEvents().onAnyMessage([&bot, &bot_commands](TgBot::Message::Ptr message) {
+    std::unordered_map<size_t, size_t> users;
+
+    bot.getEvents().onAnyMessage([&bot, &bot_commands, &users](TgBot::Message::Ptr message) {
+        if (HandleUser(message->chat->id, users)) {
+            return;
+        }
         std::cerr << GetCurrentTime()
                   << std::format(" | {} wrote {}\n", message->from->username, message->text);
         for (const auto& command : bot_commands) {
@@ -37,7 +54,10 @@ int main() {
         bot.getApi().sendMessage(message->chat->id, "Unknown command: " + message->text);
     });
 
-    bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
+    bot.getEvents().onCommand("start", [&bot, &users](TgBot::Message::Ptr message) {
+        if (HandleUser(message->chat->id, users)) {
+            return;
+        }
         if (IsAdmin(message->from->username)) {
             bot.getApi().sendMessage(message->chat->id,
                                      std::format("Hello master {}!", message->from->username));
@@ -46,7 +66,10 @@ int main() {
             bot.getApi().sendMessage(message->chat->id, "Hello!");
         }
     });
-    bot.getEvents().onCommand("kill", [&bot, &is_alive](TgBot::Message::Ptr message) {
+    bot.getEvents().onCommand("kill", [&bot, &is_alive, &users](TgBot::Message::Ptr message) {
+        if (HandleUser(message->chat->id, users)) {
+            return;
+        }
         if (IsAdmin(message->from->username)) {
             bot.getApi().sendMessage(message->chat->id,
                                      "Change the world my final message. Goodbye.......");
@@ -56,7 +79,11 @@ int main() {
             bot.getApi().sendMessage(message->chat->id, "Permission denied");
         }
     });
-    bot.getEvents().onCommand("help", [&bot, &bot_commands](TgBot::Message::Ptr message) {
+    bot.getEvents().onCommand("help", [&bot, &bot_commands, &users](TgBot::Message::Ptr message) {
+        if (HandleUser(message->chat->id, users)) {
+            return;
+        }
+
         std::string result;
         for (const auto& command : bot_commands) {
             result.append("- ")
@@ -71,16 +98,23 @@ int main() {
     try {
         std::cerr << GetCurrentTime()
                   << std::format(" | Bot username: {}\n", bot.getApi().getMe()->username);
+
         TgBot::TgLongPoll longPoll(bot);
         while (true) {
-            std::cerr << GetCurrentTime() << " | Long poll started\n";
+            std::cerr << GetCurrentTime() << " | Long poll started on thread " << 0 << "\n";
             longPoll.start();
             if (!is_alive) {
+                for (auto& [id, count] : users) {
+                    bot.getApi().sendMessage(id, "Guys, I've been killed(");
+                }
                 std::exit(0);
             }
         }
+
     } catch (TgBot::TgException& e) {
         std::cerr << GetCurrentTime() << std::format(" | error: {}\n", e.what());
+    } catch (...) {
+        std::cerr << GetCurrentTime() << "Unknown exception";
     }
     return 0;
 }
