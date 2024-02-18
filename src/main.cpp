@@ -1,31 +1,42 @@
+
 #include <tgbot/tgbot.h>
 
 #include <format>
+#include <initializer_list>
 #include <iostream>
 
-const std::string GetCurrentTime() {
-    time_t now = time(0);
-    struct tm tstruct;
-    char buf[80];
-    tstruct = *localtime(&now);
-    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-    return buf;
-}
+#include "ddl.h"
+#include "util.h"
 
-bool IsAdmin(const std::string& username) {
-    std::vector<std::string> admins = {"hyperb0rean", "mopstream"};
-    for (const auto& admin : admins) {
-        if (username == admin) {
-            return true;
-        }
+class Command : public TgBot::BotCommand {
+public:
+    Command(std::initializer_list<std::string> args) {
+        this->command = *args.begin();
+        this->description = *std::next(args.begin());
     }
-    return false;
-}
+};
 
 int main() {
-    std::vector<std::string> bot_commands = {"start", "kill"};
-    bool is_alive = true;
     TgBot::Bot bot(std::getenv("TOKEN"));
+    bool is_alive = true;
+
+    InitDatabase();
+
+    std::vector<Command> bot_commands = {{"start", "User greetings"},
+                                         {"kill", "Kills bot if you have permission"},
+                                         {"help", "Commands info"}};
+
+    bot.getEvents().onAnyMessage([&bot, &bot_commands](TgBot::Message::Ptr message) {
+        std::cerr << GetCurrentTime()
+                  << std::format(" | {} wrote {}\n", message->from->username, message->text);
+        for (const auto& command : bot_commands) {
+            if (StringTools::startsWith(message->text, "/" + command.command)) {
+                return;
+            }
+        }
+        bot.getApi().sendMessage(message->chat->id, "Unknown command: " + message->text);
+    });
+
     bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
         if (IsAdmin(message->from->username)) {
             bot.getApi().sendMessage(message->chat->id,
@@ -41,22 +52,20 @@ int main() {
                                      "Change the world my final message. Goodbye.......");
             std::cerr << GetCurrentTime() << " | Killed\n";
             is_alive = false;
+        } else {
+            bot.getApi().sendMessage(message->chat->id, "Permission denied");
         }
     });
-    bot.getEvents().onAnyMessage([&bot, &bot_commands](TgBot::Message::Ptr message) {
-        std::cerr << GetCurrentTime()
-                  << std::format(" | {} wrote {}\n", message->from->username, message->text);
+    bot.getEvents().onCommand("help", [&bot, &bot_commands](TgBot::Message::Ptr message) {
+        std::string result;
         for (const auto& command : bot_commands) {
-            if (StringTools::startsWith(message->text, "/" + command)) {
-                return;
-            }
+            result.append("- ")
+                .append(command.command)
+                .append(": ")
+                .append(command.description)
+                .append("\n");
         }
-        bot.getApi().sendMessage(message->chat->id, "Your message is: " + message->text);
-    });
-
-    signal(SIGINT, [](int s) {
-        std::cerr << GetCurrentTime() << "SIGINT got\n";
-        std::exit(0);
+        bot.getApi().sendMessage(message->chat->id, std::move(result));
     });
 
     try {

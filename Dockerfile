@@ -12,13 +12,33 @@ RUN cmake ./tgbot-cpp
 RUN cd tgbot-cpp
 RUN make -j4
 RUN make install
+RUN cd ..
 
-COPY ./src/token.txt /app/src/token.txt
-CMD cat /app/src/token.txt
+RUN apt-get install -y libpq-dev libpqxx-dev
+
+# RUN  git clone https://github.com/jtv/libpqxx.git
+# RUN cd libpqxx && \
+#     ./configure --disable-shared && \
+#     make && \
+#     make install && \
+#     cd ..
+
+RUN git clone https://github.com/jtv/libpqxx.git \
+    --branch 6.4 --depth 1 \
+    && cd libpqxx/ && mkdir build && cd build/ && cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DPQXX_DIR=/usr/local/lib \ 
+    -DPostgreSQL_DIR=/usr/lib/x86_64-linux-gnu \
+    -DPQXX_TYPE_INCLUDE_DIR=/usr/local/include/pqxx \
+    -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql \
+    -DCMAKE_MODULE_PATH=/usr/src/libpqxx-r6.4/cmake .. \
+    && make && make install && ldconfig /usr/local/lib 
+
+
+RUN ls /usr/local/lib/
 
 ADD ./src /app/src
-
-
 WORKDIR /app/build
 
 RUN cmake ../src && \
@@ -42,6 +62,26 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     libcurl4-openssl-dev libboost-system-dev\
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y git make cmake g++ 
+
+RUN apt-get install -y libpq-dev libpqxx-dev
+
+
+RUN git clone https://github.com/jtv/libpqxx.git \
+    --branch 6.4 --depth 1 \
+    && cd libpqxx/ && mkdir build && cd build/ && cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DPQXX_DIR=/usr/local/lib \ 
+    -DPostgreSQL_DIR=/usr/lib/x86_64-linux-gnu \
+    -DPQXX_TYPE_INCLUDE_DIR=/usr/local/include/pqxx \
+    -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql \
+    -DCMAKE_MODULE_PATH=/usr/src/libpqxx-r6.4/cmake .. \
+    && make && make install && ldconfig /usr/local/lib 
+
+RUN find / -name libpq.so.5
 
 RUN groupadd -r sample && useradd -r -g sample sample
 USER sample
