@@ -48,8 +48,8 @@ RUN apt-get -y update && \
     apt-get install -y software-properties-common && \
     apt-get -y update 
 
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
-    apt-get -y update && \
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
+RUN   apt-get -y update && \
     apt-get install -y gcc-4.9 && \
     apt-get upgrade -y libstdc++6 
 
@@ -78,17 +78,41 @@ RUN git clone https://github.com/jtv/libpqxx.git \
     -DCMAKE_MODULE_PATH=/usr/src/libpqxx-r6.4/cmake .. \
     && make && make install && ldconfig /usr/local/lib 
 
-RUN find / -name libpq.so.5
+#installing postgresql
+RUN apt-get install -y locales locales-all
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+RUN localedef -i en_GB -c -f UTF-8 -A /usr/share/locale/locale.alias en_GB.UTF-8
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
+RUN apt-get -y install wget ca-certificates && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list' &&\
+    apt-get -y update
+RUN apt-get -y install postgresql postgresql-contrib
 
+RUN ls -la  /etc/init.d/
+RUN /etc/init.d/postgresql start
+RUN echo "host all all 0.0.0.0/0 md5" >>/etc/postgresql/16/main/pg_hba.conf && \
+    echo "listen_addresses='*'" >> /etc/postgresql/16/main/postgresql.conf 
+RUN  /etc/init.d/postgresql restart
 #changing rights
 RUN groupadd -r sample && useradd -r -g sample sample
 USER sample
+USER postgres
+RUN pg_lsclusters
+ENV PGPASSWORD=postgres
+# CMD ["/start_postgres.sh"]
 
-#installing postgresql
-# RUN apt-get -y install postgresql
+RUN  pg_ctlcluster 16 main start && \
+    # psql "ALTER USER postgres WITH PASSWORD 'mint';" && \
+    createdb mintdb
+RUN pg_lsclusters
 
 #runnhing
 WORKDIR /app
 COPY --from=build /app/build/database .
+
+EXPOSE 5432
 
 ENTRYPOINT ["./database"]
