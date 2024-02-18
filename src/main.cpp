@@ -17,6 +17,7 @@ public:
 };
 
 int main() {
+    std::cerr << std::getenv("TOKEN") << std::endl;
     TgBot::Bot bot(std::getenv("TOKEN"));
     bool is_alive = true;
 
