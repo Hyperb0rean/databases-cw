@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag database:$(date + %s)
+      run: docker build . --file Dockerfile --tag database
 
   run:
     runs-on: ubuntu-latest
