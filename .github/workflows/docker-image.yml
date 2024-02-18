@@ -14,12 +14,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
+    - name: Build Bot
       run: docker build . --file Dockerfile --tag database
-
-  run:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
     - name: Run Bot
       run: docker run -e TOKEN=${{ secrets.TOKEN }} database
