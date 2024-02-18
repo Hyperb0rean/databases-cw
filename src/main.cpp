@@ -2,6 +2,7 @@
 #include <tgbot/tgbot.h>
 
 #include <format>
+#include <fstream>
 #include <initializer_list>
 #include <iostream>
 #include <pqxx/pqxx>
@@ -20,33 +21,67 @@ public:
 };
 
 bool HandleUser(size_t id, std::unordered_map<size_t, size_t>& users) {
-    if (users.contains(id)) {
-        ++users[id];
-    } else {
-        users[id] = 0;
-    }
+    ++users[id];
     return users[id] > kMaxQueries;
+}
+
+std::vector<std::string> ReadDDLQueries(std::string filename) {
+    std::ifstream file(filename);
+    std::vector<std::string> result;
+    std::string line;
+    std::string query;
+    while (std::getline(file, line)) {
+        query.append(line);
+        std::cerr << line[line.size() - 1] << std::endl;
+        if (line[line.size() - 1] == ';') {
+            std::cerr << query << std::endl;
+            result.emplace_back(query);
+            query.clear();
+        }
+    }
+    return result;
+}
+
+void InitDatabase() {
+    pqxx::connection c;
+    std::cout << GetCurrentTime() << " | Connected to " << c.dbname() << " " << c.hostname() << " "
+              << c.port() << '\n';
+
+    // std::vector<std::string> ddl_queries = {R"EOF(
+    //     create table crops (
+    //         crop_id serial primary key,
+    //         name text not null,
+    //         humidity real check (humidity >= 0 and humidity <= 100),
+    //         brightness real check (brightness > 0),
+    //         is_legal boolean not null,
+    //         brain_damage real check (brain_damage > -200 and brain_damage < 200)
+    //     );)EOF"};
+
+    auto ddl_queries = ReadDDLQueries("./ddl.sql");
+
+    for (const auto& ddl_query : ddl_queries) {
+        pqxx::work query(c);
+        try {
+            std::cerr << ddl_query << std::endl;
+            pqxx::result res = query.exec(ddl_query);
+            query.commit();
+        } catch (...) {
+            std::cout << "Database: failed to execute query: " << ddl_query << std::endl;
+        }
+    }
 }
 
 int main() {
     TgBot::Bot bot(std::getenv("TOKEN"));
     bool is_alive = true;
 
-    while (true) {
-        try {
-            pqxx::connection c;
-            std::cout << "Connected to " << c.dbname() << '\n';
-            break;
-
-        } catch (const std::exception& e) {
-        }
-    }
+    InitDatabase();
 
     std::vector<Command> bot_commands = {{"start", "User greetings"},
                                          {"kill", "Kills bot if you have permission"},
                                          {"help", "Commands info"}};
 
-    std::unordered_map<size_t, size_t> users;
+    std::unordered_map<size_t, size_t> users{};
 
     bot.getEvents().onAnyMessage([&bot, &bot_commands, &users](TgBot::Message::Ptr message) {
         if (HandleUser(message->chat->id, users)) {
@@ -68,10 +103,11 @@ int main() {
         }
         if (IsAdmin(message->from->username)) {
             bot.getApi().sendMessage(message->chat->id,
-                                     std::format("Hello master {}!", message->from->username));
+                                     std::format("Hello master {}!", message->from->firstName));
 
         } else {
-            bot.getApi().sendMessage(message->chat->id, "Hello!");
+            bot.getApi().sendMessage(message->chat->id,
+                                     std::format("Hello padavan {}!", message->from->firstName));
         }
     });
     bot.getEvents().onCommand("kill", [&bot, &is_alive, &users](TgBot::Message::Ptr message) {
