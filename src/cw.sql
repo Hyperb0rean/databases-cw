@@ -1,4 +1,4 @@
-create table if not exists  crops (
+create table crops (
     crop_id serial primary key, 
     name text not null,
     humidity real check (humidity >= 0 and humidity <= 100),
@@ -7,7 +7,7 @@ create table if not exists  crops (
     brain_damage real check (brain_damage > -200 and brain_damage < 200)
 );
 
-create table if not exists  estate (
+create table estate (
     estate_id serial primary key, 
     name text not null,
     area real not null check (area > 100),
@@ -15,21 +15,21 @@ create table if not exists  estate (
     rent real not null check (rent > 0)
 );
 
-create table if not exists  plantation (
+create table plantation (
     plantation_id serial primary key,
     capacity integer not null,
     revenue real not null,
     estate_id integer references estate(estate_id)
 );
 
-create table if not exists  crops_plantations (
+create table crops_plantations (
     crop_id integer references crops(crop_id),
     plantation_id integer references plantation(plantation_id),
     counter integer check (counter >= 0),
     primary key(crop_id, plantation_id)
 );
 
-create table if not exists  worker (
+create table worker (
     worker_id serial primary key,
     plantation_id integer references plantation(plantation_id),
     name text not null,
@@ -37,7 +37,7 @@ create table if not exists  worker (
     profession text not null
 );
 
-create table if not exists  worker_family_member (
+create table worker_family_member (
     worker_fm_id serial primary key,
     worker_id integer references worker(worker_id),
     name text not null,
@@ -45,37 +45,37 @@ create table if not exists  worker_family_member (
     adress text not null
 );
 
-create table if not exists landlord (
+create table landlord (
     landlord_id serial primary key,
     estate_id integer references estate(estate_id),
     name text not null,
     capital real check (capital > 0)
 );
 
-create table if not exists evidence_info (
+create table evidence_info (
     evidence_info_id serial primary key,
     landlord_id integer references landlord(landlord_id),
     description text,
     worth real check (worth >= 20 AND worth <= 100)
 );
 
-create table if not exists manager (
+create table manager (
     manager_id serial primary key,
     plantation_id integer references plantation(plantation_id),
     name text not null,
     salary real check (salary >=100)
 );
 
-create table if not exists client (
+create table client (
     client_id serial primary key,
     manager_id integer references manager(manager_id),
     name text not null,
-    debt real check (debt < 10000),
-    is_highly_addicted boolean,
+    debt real check (debt < 10000) default 0,
+    is_highly_addicted boolean defaut false,
     brain_resource real
 );
 
-create table if not exists client_family_member(
+create table client_family_member(
     client_fm serial primary key,
     client_id integer references client(client_id),
     adress text not null,
