@@ -70,8 +70,8 @@ create table client (
     client_id serial primary key,
     manager_id integer references manager(manager_id),
     name text not null,
-    debt real check (debt < 10000) default 0,
-    is_highly_addicted boolean defaut false,
+    debt real check (debt < 10000),
+    is_highly_addicted boolean,
     brain_resource real
 );
 
@@ -129,23 +129,23 @@ create trigger plant_capacity_checker_t
 before insert or update on crops_plantations
 for each row execute function plant_capacity_checker_f();
 
-create or replace function enum_crops_on_plantation(name text)
+create or replace function enum_crops_on_plantation(crop_name text)
 returns setof text as $$
     begin
         select name from crops c
         join crops_plantations cp on c.crops_id = cp.crops_id
         join plantation p on cp.plantation_td = p.plantation_id
-        where p.name = name;
+        where p.name = crop_name;
     end;
 $$ language plpgsql;
 
-create or replace function get_friends_email(name text)
+create or replace function get_friends_email(client_name text)
 returns setof text as $$
-    begin
-        select email from client_family_member
-        where client_id = (select client_id from client where client.name = name);
-    end;
+  begin
+    return query select email from client_family_member where client_id = (select client_id from client where client.name = client_name);
+  end;
 $$ language plpgsql;
+
 
 create index crop_id_i on crops using hash(crop_id);
 

@@ -77,6 +77,9 @@ std::string GetPrettyTable(const pqxx::result& query_result) {
 }
 
 void PrepareCommands(pqxx::connection& connection) {
+    connection.prepare("get_friends_email", "select get_friends_email($1)");
+    connection.prepare("enum_crops_on_plantation", "select enum_crops_on_plantation($1)");
+    connection.prepare("sell", "select sell($1, $2, $3)");
 
     connection.prepare("add_crop",
                        "insert into crops (name, humidity, brightness, is_legal, "
@@ -92,8 +95,9 @@ void PrepareCommands(pqxx::connection& connection) {
                        "brain_resource) values($1, $2, 0, false, 100);");
     connection.prepare("view_clients", "select * from client;");
 
-    connection.prepare("add_client_family_member",
-                       "insert into client (client_id, adress, email) values($1, $2, $3);");
+    connection.prepare(
+        "add_client_family_member",
+        "insert into client_family_member (client_id, adress, email) values($1, $2, $3);");
     connection.prepare("view_client_family_members", "select * from client_family_member;");
 
     connection.prepare("add_estate",
@@ -135,7 +139,23 @@ void PrepareCommands(pqxx::connection& connection) {
 
 pqxx::result ExecutePrepared(pqxx::work& query, std::string command,
                              std::vector<std::string>&& args) {
-    if (command == "add_crop") {
+
+    if (command == "sell") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "enum_crops_on_plantation") {
+        if (args.size() < 2) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1]);
+    } else if (command == "get_friends_email") {
+        if (args.size() < 2) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1]);
+    } else if (command == "add_crop") {
         if (args.size() < 6) {
             throw std::runtime_error("Invalid number of arguments");
         }
@@ -248,7 +268,7 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                         result.append(command.command)
                             .append(" - ")
                             .append(command.description)
-                            .append("\n");
+                            .append("\n\n");
                     }
                     bot.getApi().sendMessage(message->chat->id, std::move(result));
                 });
@@ -264,6 +284,21 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                     if (StringTools::startsWith(command.command, "add")) {
                         bot.getApi().sendMessage(message->chat->id, "Successfully added");
                     } else if (StringTools::startsWith(command.command, "view")) {
+                        bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
+                    } else if (command.command == "sell") {
+                        bot.getApi().sendMessage(message->chat->id, "Sold some sweat crops!");
+                    } else if (command.command == "enum_crops_on_plantation") {
+                        // for (auto& res : query_result) {
+                        //     std::cout << GetCurrentTime() << " | " << res.c_str();
+                        //     bot.getApi().sendMessage(message->chat->id, res.c_str());
+                        // }
+                        bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
+
+                    } else if (command.command == "get_friends_email") {
+                        // for (auto& res : query_result) {
+                        //     std::cout << GetCurrentTime() << " | " << res.c_str();
+                        //     bot.getApi().sendMessage(message->chat->id, res.c_str());
+                        // }
                         bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
                     }
                 } catch (std::exception& e) {
@@ -293,6 +328,13 @@ int main() {
         {"kill", "Kills bot if you have permission"},
         {"help", "Commands info"},
         {"view_crops", "Check all current crops"},
+        {"sell",
+         "Sells certain amount of crop to client. Arguments: (id_client: int,id_crop: int, amount: "
+         "int)"},
+        {"enum_crops_on_plantation",
+         "Enums certain crop on plantation by name. Arguments: (crop_name: string)"},
+        {"get_friends_email",
+         "Returns emails of friends of client. Arguments: (client_name: string)"},
         {"add_crop",
          "Add new crop into database. Arguments: (name: string, humidity: percent, brightness: "
          "uint, is_legal: bool, brain_damage: percent)"},
