@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cassert>
 #include <chrono>
 #include <string>
+#include <tuple>
 #include <vector>
 
 inline const std::string GetCurrentTime() {
@@ -22,3 +24,9 @@ inline bool IsAdmin(const std::string& username) {
     }
     return false;
 }
+
+// inline std::vector<std::string> GetArguments(std::string message) {
+//     std::vector<std::string> tokens;
+//     boost::split(tokens, message, boost::is_any_of(" "));
+//     return tokens;
+// }
