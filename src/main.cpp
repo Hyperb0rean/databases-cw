@@ -44,8 +44,9 @@ void InitDatabase(pqxx::connection& connection) {
         try {
             pqxx::result res = query.exec(ddl_query);
             query.commit();
-        } catch (...) {
-            std::cout << "Database: failed to execute query: " << ddl_query << std::endl;
+        } catch (std::exception& e) {
+            std::cout << "Database: failed to execute query: " << ddl_query << std::endl
+                      << " Error: " << e.what() << std::endl;
         }
     }
     std::cout << GetCurrentTime() << " | Successfully created database" << std::endl;
@@ -76,17 +77,120 @@ std::string GetPrettyTable(const pqxx::result& query_result) {
 }
 
 void PrepareCommands(pqxx::connection& connection) {
+
+    connection.prepare("add_crop",
+                       "insert into crops (name, humidity, brightness, is_legal, "
+                       "brain_damage) values($1, $2, $3, $4, $5);");
+
     connection.prepare("add_crop",
                        "insert into crops (name, humidity, brightness, is_legal, "
                        "brain_damage) values($1, $2, $3, $4, $5);");
     connection.prepare("view_crops", "select * from crops;");
+
+    connection.prepare("add_client",
+                       "insert into client (manager_id, name, debt, is_highly_addicted, "
+                       "brain_resource) values($1, $2, 0, false, 100);");
+    connection.prepare("view_clients", "select * from client;");
+
+    connection.prepare("add_client_family_member",
+                       "insert into client (client_id, adress, email) values($1, $2, $3);");
+    connection.prepare("view_client_family_members", "select * from client_family_member;");
+
+    connection.prepare("add_estate",
+                       "insert into estate (name, area, county, rent) values($1, $2, $3, $4);");
+    connection.prepare("view_estates", "select * from estate;");
+
+    connection.prepare("add_plantation",
+                       "insert into plantation (capacity, revenue, estate_id) values($1, $2, $3);");
+    connection.prepare("view_plantations", "select * from plantation;");
+
+    connection.prepare(
+        "add_worker",
+        "insert into worker (plantation_id, name, salary, profession) values($1, $2, $3, $4);");
+    connection.prepare("view_workers", "select * from worker;");
+
+    connection.prepare("add_landlord",
+                       "insert into landlord (estate_id, name, capital) values($1, $2, $3);");
+    connection.prepare("view_landlords", "select * from landlord;");
+
+    connection.prepare("add_manager",
+                       "insert into manager (plantation_id, name, salary) values($1, $2, $3);");
+    connection.prepare("view_managers", "select * from manager;");
+
+    connection.prepare(
+        "add_evidence_info",
+        "insert into evidence_info (landlord_id, description, worth) values($1, $2, $3);");
+    connection.prepare("view_evidence_info", "select * from evidence_info;");
+
+    connection.prepare(
+        "add_crops_plantations",
+        "insert into crops_plantations (crop_id, plantation_id, counter) values($1, $2, $3);");
+    connection.prepare("view_crops_plantations", "select * from crops_plantations;");
+
+    connection.prepare("add_worker_family_member",
+                       "insert into worker_family_member (worker_id, name, relationship, adress) "
+                       "values($1, $2, $3, $4);");
+    connection.prepare("view_worker_family_members", "select * from worker_family_member;");
 }
 
 pqxx::result ExecutePrepared(pqxx::work& query, std::string command,
                              std::vector<std::string>&& args) {
     if (command == "add_crop") {
+        if (args.size() < 6) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
         return query.exec_prepared(command, args[1], args[2], args[3], args[4], args[5]);
-    } else if (command == "view_crops") {
+    } else if (command == "add_client") {
+        if (args.size() < 3) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2]);
+    } else if (command == "add_client_family_member") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_estate") {
+        if (args.size() < 5) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3], args[4]);
+    } else if (command == "add_plantation") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_worker") {
+        if (args.size() < 5) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3], args[4]);
+    } else if (command == "add_landlord") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_manager") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_evidence_info") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_crops_plantations") {
+        if (args.size() < 4) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3]);
+    } else if (command == "add_worker_family_member") {
+        if (args.size() < 5) {
+            throw std::runtime_error("Invalid number of arguments");
+        }
+        return query.exec_prepared(command, args[1], args[2], args[3], args[4]);
+    } else if (StringTools::startsWith(command, "view")) {
         return query.exec_prepared(command);
     }
 
@@ -141,9 +245,8 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                 command.command, [&bot, &bot_commands](TgBot::Message::Ptr message) {
                     std::string result;
                     for (const auto& command : bot_commands) {
-                        result.append("- ")
-                            .append(command.command)
-                            .append(": ")
+                        result.append(command.command)
+                            .append(" - ")
                             .append(command.description)
                             .append("\n");
                     }
@@ -190,17 +293,49 @@ int main() {
         {"kill", "Kills bot if you have permission"},
         {"help", "Commands info"},
         {"view_crops", "Check all current crops"},
-        {"add_crop", "Add new crop into database (string, percent, uint, bool, percent)"},
-        {"add_client", "Add new client into database"},
-        {"add_client_family_member", "Add new client family member into database"},
-        {"add_crops_plantation", "Add new crops plantation into database"},
-        {"add_estate", "Add new estate into database"},
-        {"add_evidence_info", "Add new evidence_info into database"},
-        {"add_landlord", "Add new landlord into database"},
-        {"add_manager", "Add new manager into database"},
-        {"add_plantation", "Add new plantation into database"},
-        {"add_worker", "Add new worker into database"},
-        {"add_worker_family_member", "Add new worker family member into database"}};
+        {"add_crop",
+         "Add new crop into database. Arguments: (name: string, humidity: percent, brightness: "
+         "uint, is_legal: bool, brain_damage: percent)"},
+        {"view_clients", "Check all current clients"},
+        {"add_client", "Add new client into database. Arguments: (manager_id: int, name: string)"},
+        {"view_client_family_members", "Check all current client's family members"},
+        {"add_client_family_member",
+         "Add new client family member into database. Arguments: (client_id: int, adress: "
+         "string, email: string)"},
+        {"view_estates", "Check all current estates"},
+        {"add_estate",
+         "Add new estate into database. Arguments: (name: string, area: uint, country: string, "
+         "rent: real)"},
+        {"view_crops_plantations", "Check all crops related to plantations"},
+        {"add_crops_plantations",
+         "Add new crops related to plantations into database. Arguments: (crops_id: int, "
+         "plantation_id: int, "
+         "counter: "
+         "uint)"},
+        {"view_evidence_info", "Check all current evidence_info"},
+        {"add_evidence_info",
+         "Add new evidence_info into database. Arguments: (landlord_id: int, description: "
+         "string, worth: percent)"},
+        {"view_landlords", "Check all current landlords"},
+        {"add_landlord",
+         "Add new landlord into database. Arguments: (estate_id: int, name: string, capital: "
+         "real)"},
+        {"view_managers", "Check all current managers"},
+        {"add_manager",
+         "Add new manager into database. Arguments: (plantation_id: int, name:string, salary: "
+         "real)"},
+        {"view_plantations", "Check all current plantations"},
+        {"add_plantation",
+         "Add new plantation into database. Arguments: (capacity: uint, revenue: real, "
+         "estate_id: int)"},
+        {"view_workers", "Check all current workers"},
+        {"add_worker",
+         "Add new worker into database. Arguments: (plantation_id: int, name: string, salary: "
+         "real, profession: string)"},
+        {"view_worker_family_members", "Check all current worker's family members"},
+        {"add_worker_family_member",
+         "Add new worker family member into database. Argument: (worker_id: int, name: string, "
+         "relationship: string, adress: string)"}};
 
     UserVault users{};
 
@@ -214,7 +349,7 @@ int main() {
 
         TgBot::TgLongPoll longPoll(bot);
         while (true) {
-            std::cerr << GetCurrentTime() << " | Long poll started on thread " << 0 << "\n";
+            std::cerr << GetCurrentTime() << " | Long poll started" << std::endl;
             longPoll.start();
             if (!is_alive) {
                 for (auto& [id, count] : users) {
