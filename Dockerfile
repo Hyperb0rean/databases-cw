@@ -1,4 +1,5 @@
 #building bot
+
 FROM gcc:latest as build
 
 RUN apt-get update && \
@@ -10,6 +11,7 @@ RUN apt-get update && \
 RUN apt-get install g++ make binutils libboost-system-dev libssl-dev zlib1g-dev libcurl4-openssl-dev
 
 #installing tgbot lib
+
 RUN git clone https://github.com/reo7sp/tgbot-cpp
 RUN cmake ./tgbot-cpp
 RUN cd tgbot-cpp
@@ -19,6 +21,7 @@ RUN cd ..
 
 
 #installing libpqxx
+
 RUN apt-get install -y libpq-dev libpqxx-dev
 
 RUN git clone https://github.com/jtv/libpqxx.git \
@@ -34,6 +37,7 @@ RUN git clone https://github.com/jtv/libpqxx.git \
     && make && make install && ldconfig /usr/local/lib 
 
 #building sources
+
 ADD ./src /app/src
 WORKDIR /app/build
 
@@ -41,9 +45,11 @@ RUN cmake ../src && \
     cmake --build . 
 
 #run configuration
+
 FROM ubuntu:latest
 
 #installing base dependencies
+
 RUN apt-get -y update && \
     apt-get install -y software-properties-common && \
     apt-get -y update 
@@ -63,6 +69,7 @@ RUN apt-get update && \
     apt-get install -y git make cmake g++ 
 
 #installing libpqxx
+
 RUN apt-get install -y libpq-dev libpqxx-dev
 
 
@@ -79,6 +86,7 @@ RUN git clone https://github.com/jtv/libpqxx.git \
     && make && make install && ldconfig /usr/local/lib 
 
 #installing postgresql
+
 RUN apt-get install -y locales locales-all
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
@@ -91,7 +99,6 @@ RUN apt-get -y install wget ca-certificates && \
     apt-get -y update
 RUN apt-get -y install postgresql postgresql-contrib
 
-RUN ls -la  /etc/init.d/
 RUN /etc/init.d/postgresql start
 RUN echo "host all all 0.0.0.0/0 md5" >>/etc/postgresql/16/main/pg_hba.conf && \
     echo "listen_addresses='*'" >> /etc/postgresql/16/main/postgresql.conf 
@@ -104,11 +111,14 @@ RUN ls -la
 RUN chmod +x ./run.sh
 
 #changing rights
+
 RUN groupadd -r sample && useradd -r -g sample sample
 USER sample
 USER postgres
 RUN pg_lsclusters
 ENV PGPASSWORD=postgres
+
+# creating database
 
 RUN  pg_ctlcluster 16 main start && \
     createdb mintdb

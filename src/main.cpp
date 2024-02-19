@@ -11,13 +11,12 @@ public:
     }
 };
 
-bool HandleUser(size_t id, UserVault& users) {
-    ++users[id];
-    return users[id] > kMaxQueries;
+bool CheckDDOSUser(size_t user_id, UserVault& users) {
+    ++users[user_id];
+    return users[user_id] > kMaxQueries;
 }
 
-std::vector<std::string> ReadDDLQueries(std::string filename) {
-    std::ifstream file(filename);
+std::vector<std::string> ReadDDLQueries(std::ifstream&& file) {
     std::vector<std::string> result;
     std::string line;
     std::string query;
@@ -37,7 +36,7 @@ std::vector<std::string> ReadDDLQueries(std::string filename) {
 
 void InitDatabase(pqxx::connection& connection) {
 
-    auto ddl_queries = ReadDDLQueries("./cw.sql");
+    auto ddl_queries = ReadDDLQueries(std::ifstream("./cw.sql"));
 
     for (const auto& ddl_query : ddl_queries) {
         pqxx::work query(connection);
@@ -221,7 +220,7 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                     const std::vector<Command>& bot_commands, UserVault& users, bool* is_alive) {
 
     bot.getEvents().onAnyMessage([&bot, &bot_commands, &users](TgBot::Message::Ptr message) {
-        if (HandleUser(message->chat->id, users)) {
+        if (CheckDDOSUser(message->chat->id, users)) {
             return;
         }
         std::cout << GetCurrentTime()
