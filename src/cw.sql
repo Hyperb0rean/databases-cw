@@ -70,8 +70,8 @@ create table client (
     client_id serial primary key,
     manager_id integer references manager(manager_id),
     name text not null,
-    debt real check (debt < 10000),
-    is_highly_addicted boolean,
+    debt real check (debt < 10000) default 0,
+    is_highly_addicted boolean defaut false,
     brain_resource real
 );
 
