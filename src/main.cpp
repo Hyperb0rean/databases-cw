@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-const size_t kMaxQueries = 50;
+const size_t kMaxQueries = 100;
 using UserVault = std::unordered_map<size_t, size_t>;
 
 class Command : public TgBot::BotCommand {
@@ -44,7 +44,8 @@ void InitDatabase(pqxx::connection& connection) {
             pqxx::result res = query.exec(ddl_query);
             query.commit();
         } catch (std::exception& e) {
-            std::cout << "Database: failed to execute query: " << ddl_query << std::endl
+            std::cerr << GetCurrentTime() << " | Database: failed to execute query: " << ddl_query
+                      << std::endl
                       << " Error: " << e.what() << std::endl;
         }
     }
@@ -242,9 +243,8 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                         std::format("Hello master {}!", message->from->firstName));
 
                 } else {
-                    bot.getApi().sendMessage(
-                        message->chat->id,
-                        std::format("Hello padavan {}!", message->from->firstName));
+                    bot.getApi().sendMessage(message->chat->id,
+                                             std::format("Hello {}!", message->from->firstName));
                 }
             });
         } else if (command.command == "kill") {
@@ -285,27 +285,23 @@ void HandleCommands(TgBot::Bot& bot, pqxx::connection& connection,
                     } else if (StringTools::startsWith(command.command, "view")) {
                         bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
                     } else if (command.command == "sell") {
-                        bot.getApi().sendMessage(message->chat->id, "Sold some sweat crops!");
+                        bot.getApi().sendMessage(message->chat->id, "Sold some sweet crops!");
                     } else if (command.command == "enum_crops_on_plantation") {
-                        // for (auto& res : query_result) {
-                        //     std::cout << GetCurrentTime() << " | " << res.c_str();
-                        //     bot.getApi().sendMessage(message->chat->id, res.c_str());
-                        // }
+                        std::cout << GetCurrentTime() << " | " << GetPrettyTable(query_result)
+                                  << std::endl;
                         bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
-
                     } else if (command.command == "get_friends_email") {
-                        // for (auto& res : query_result) {
-                        //     std::cout << GetCurrentTime() << " | " << res.c_str();
-                        //     bot.getApi().sendMessage(message->chat->id, res.c_str());
-                        // }
+                        std::cout << GetCurrentTime() << " | " << GetPrettyTable(query_result)
+                                  << std::endl;
                         bot.getApi().sendMessage(message->chat->id, GetPrettyTable(query_result));
                     }
                 } catch (std::exception& e) {
-                    std::cout << "Database: failed to execute query: " << message->text
+                    std::cerr << GetCurrentTime()
+                              << " | Database: failed to execute query: " << message->text
                               << " due to " << e.what() << std::endl;
 
                     bot.getApi().sendMessage(message->chat->id,
-                                             "Error occured " + std::string{e.what()} + "\n");
+                                             "Error occured: " + std::string{e.what()} + "\n");
                 }
             });
         }
